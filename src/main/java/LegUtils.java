@@ -1,28 +1,66 @@
+import java.io.*;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class LegUtils {
-    public static List getListByParamter(List<Leg> legs,String paramterName){
-        List list=new ArrayList();
-        for(Leg leg:legs){
+    public static String writeInProperties(List<Leg> legs,String propertiespath,String partyName){
+        String message="";
+        FileWriter fileWriter=null;
+        BufferedWriter bw=null;
+        try{
+            fileWriter=new FileWriter(new File(propertiespath));
+            bw=new BufferedWriter(fileWriter);
+            List<Map> list=getListByParamter(legs);
+            bw.write("partyName="+partyName+"\n");
+            for (Map map:list) {
+                for (Object key : map.keySet()) {
+                    bw.write(low2First(Leg.class.getSimpleName())+"."+key+"="+map.get(key)+"\n");
+                    message="success";
+                }
+                }
+        }catch (Exception e){
+            message="error";
+            e.printStackTrace();
+        }finally {
             try{
-                Class legclazz=leg.getClass();
-                Field field=legclazz.getDeclaredField(paramterName);
-                field.setAccessible(true);
-                Method method=legclazz.getDeclaredMethod("get"+up2First(paramterName));
-                Object o=method.invoke(leg);
-                list.add(o);
-            }
-            catch (Exception e){
+                bw.close();
+                fileWriter.close();
+            }catch (Exception e){
                 e.printStackTrace();
             }
 
         }
 
+        return message;
+    }
+    public static List<Map> getListByParamter(List<Leg> legs){
+        List list=new ArrayList();
+        for(Leg leg:legs){
+            Map map=new LinkedHashMap();
+            try{
+                Class legclazz=leg.getClass();
+                Field[] fields=legclazz.getDeclaredFields();
+                for(Field field:fields){
+                    field.setAccessible(true);
+                    Method method=legclazz.getDeclaredMethod("get"+up2First(field.getName()));
+                    Object o=method.invoke(leg);
+                    map.put(field.getName(),o);
+                }
+
+
+
+                list.add(map);
+            }
+            catch (Exception e){
+                e.printStackTrace();
+            }
+        }
         return list;
     }
 
@@ -68,6 +106,17 @@ public class LegUtils {
             char[] chars=parameter.toCharArray();
             chars[0]-=32;
             return String.valueOf(chars);
+    }
+    public static String low2First(String parameter){
+        char[] chars=parameter.toCharArray();
+        chars[0]+=32;
+        return String.valueOf(chars);
+    }
+
+    public static void main(String[] args) {
+        List<Leg> legs=new ArrayList<>();
+        legs=getlegList(legs);
+        System.out.println(writeInProperties(legs,"D:\\wordutils\\src\\main\\resources\\keywords.txt","中正资本有限公司"));
     }
 
  }
